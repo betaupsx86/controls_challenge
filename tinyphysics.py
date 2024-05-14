@@ -97,6 +97,9 @@ class TinyPhysicsSimulator:
     self.controller = controller
     self.debug = debug
     self.reset()
+  
+  def done(self) -> bool:
+    return self.step_idx  == len(self.data)
 
   def reset(self) -> None:
     self.step_idx = CONTEXT_LENGTH
