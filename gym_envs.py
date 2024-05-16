@@ -21,12 +21,10 @@ import random
 
 import gymnasium as gym
 from gymnasium import spaces
-from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
 from controllers import CONTROLLERS
 from tinyphysics import TinyPhysicsModel, TinyPhysicsSimulator, DEL_T, CONTROL_START_IDX, LATACCEL_RANGE, STEER_RANGE
-from pathlib import Path
 
 # tiny env that tracks target and current lat accel
 class TinyEnv(gym.Env):
@@ -88,18 +86,17 @@ class TinyEnv(gym.Env):
 
         # Convert a possible numpy bool to a Python bool.
         terminated = False
-        terminated = bool(
-            self.simulator.current_lataccel <= self.min_lateral_acceleration
-            or self.simulator.current_lataccel >= self.max_lateral_acceleration
-        )
+        # # Penalize going out of bounds. This resulted in a bunch of 'cheating' behavior. ex: The agent would not dare steer too far from the middle/current acceleration
+        # terminated = bool(
+        #     self.simulator.current_lataccel <= self.min_lateral_acceleration
+        #     or self.simulator.current_lataccel >= self.max_lateral_acceleration
+        # )
         truncated = self.simulator.done()
 
-        reward = 0
         cost = math.pow(target_lataccel-self.simulator.current_lataccel, 2) * 100 * 5 + math.pow((last_lataccel - self.simulator.current_lataccel)/DEL_T, 2)*100
-        # Ideally we dont want this exponential reward with capped punishment, but the agent doesnt seem to converge otherwise.
-        # It instead goes straight for the terminated reward.
-        reward = 1/(cost+0.001)
-        # reward = -cost
+        # # Ideally we dont want this exponential reward with capped punishment, but the agent seems to converge more easily with it.
+        # reward = 1/(cost+0.001)
+        reward = -cost
 
         if terminated:
             reward = -10000000000000000000
@@ -177,12 +174,7 @@ class TinyEnv(gym.Env):
 
         pos = self.state[4]
 
-        # xs = np.linspace(self.min_lateral_acceleration, self.max_lateral_acceleration, 100)
-        # ys = self._height(xs)
-        # xys = list(zip((xs - self.min_lateral_acceleration) * scale, ys * scale))
-
-        gfxdraw.hline(self.surf, 0, self.screen_width, int(10 * scale), (0, 0, 0))
-       
+        gfxdraw.hline(self.surf, 0, self.screen_width, 100, (0, 0, 0))       
         l, r, t, b = -carwidth / 2, carwidth / 2, carheight / 2, -carheight / 2
         cartx = pos * scale + self.screen_width / 2.0  # MIDDLE OF CART
         carty = 100  # TOP OF CART

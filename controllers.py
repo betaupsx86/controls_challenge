@@ -56,7 +56,7 @@ class PPO_PIDController(BaseController):
   
 class PPOController(BaseController):
   def __init__(self):
-    self.model = PPO.load("ppo_tiny")
+    self.model = PPO.load("./logs/ppo/best_model")
   def update(self, target_lataccel, current_lataccel, state):
     action, _ = self.model.predict(np.array([state.roll_lataccel, state.v_ego, state.a_ego,  target_lataccel, current_lataccel], dtype=np.float32))
     return action[0]
