@@ -1,3 +1,36 @@
+# Tiny Env
+Checkout the tiny env and train your RL agent on the comma challenge.
+
+State
+----
+| ID | Observation | Min | Max | Units |
+| --- | --- | --- | --- | --- |
+| 0 | roll lateral acceleration | -5  |  5 |  m/s2 | 
+| 1 | forward velocity |  -inf |  inf |  m/s |
+| 2 | forward acceleration |  -inf |  inf |  m/s | 
+| 3 | target lateral acceleration | -5 |  5 |  m/s2 | 
+| 4 | current lateral acceleration | -5 |  5 |  m/s2 |
+
+Action
+----
+The action is a ndarray with shape (1,), representing the steer torque applied. Clipped from -2 to 2.
+You can also try to train your agent to predict a PID controller parameters by passing on_pid to the env.
+
+Reward
+----
+The negative of the cost as stated in the challenge.
+
+# Usage 
+Example train a PPO policy
+```
+ python3 ./ppo_train.py --model_path ./models/tinyphysics.onnx --data_path ./data/ --num_segs 20000 --train_n_envs 2 --train_total_timesteps 1e6 --train_save_freq 1e5 --train_eval_freq 5000
+```
+Controllers
+```
+python3 ./tinyphysics.py --model_path ./models/tinyphysics.onnx --data_path ./data/ --num_segs 100 --controller ppo
+python3 ./tinyphysics.py --model_path ./models/tinyphysics.onnx --data_path ./data/ --num_segs 100 --controller pid
+```
+
 # Comma Controls Challenge!
 ![Car](./imgs/car.jpg)
 
