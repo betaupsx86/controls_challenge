@@ -176,6 +176,7 @@ class TinyPhysicsSimulator:
     return {'lataccel_cost': lat_accel_cost, 'jerk_cost': jerk_cost, 'total_cost': total_cost}
 
   def rollout(self) -> float:
+    print("Rollout...")
     if self.debug:
       plt.ion()
       fig, ax = plt.subplots(4, figsize=(12, 14), constrained_layout=True)

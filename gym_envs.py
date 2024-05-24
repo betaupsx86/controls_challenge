@@ -3,13 +3,12 @@ from typing import Optional, List
 
 import numpy as np
 import random
-
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.error import DependencyNotInstalled
 
 from controllers import CONTROLLERS
-from tinyphysics import TinyPhysicsModel, TinyPhysicsSimulator, DEL_T, CONTROL_START_IDX, LATACCEL_RANGE, STEER_RANGE
+from tinyphysics import TinyPhysicsModel, TinyPhysicsSimulator, DEL_T, CONTROL_START_IDX, LATACCEL_RANGE, STEER_RANGE, LAT_ACCEL_COST_MULTIPLIER
 
 # tiny env that tracks target and current lat accel
 class TinyEnv(gym.Env):
@@ -35,18 +34,26 @@ class TinyEnv(gym.Env):
         self.debug = debug
         self.simulator = None
 
+        self.min_lateral_acceleration_roll = -1.7
+        self.max_lateral_acceleration_roll = 1.7
+
+        self.min_lateral_acceleration_target = -7.2
+        self.max_lateral_acceleration_target = 7.2
+
         self.min_lateral_acceleration = LATACCEL_RANGE[0]
         self.max_lateral_acceleration = LATACCEL_RANGE[1]
-        self.min_forward_acceleration = -25
-        self.max_forward_acceleration = 25
-        self.min_forward_velocity = -250
-        self.max_forward_velocity = 250
+
+        self.min_forward_acceleration = -13
+        self.max_forward_acceleration = 8
+
+        self.min_forward_velocity = -0.1
+        self.max_forward_velocity = 43
 
         self.low_state = np.array(
-            [self.min_lateral_acceleration, self.min_forward_velocity, self.min_forward_acceleration, self.min_lateral_acceleration, self.min_lateral_acceleration], dtype=np.float32
+            [self.min_lateral_acceleration_roll, self.min_forward_velocity, self.min_forward_acceleration, self.min_lateral_acceleration_target, self.min_lateral_acceleration], dtype=np.float32
         )              
         self.high_state = np.array(
-            [self.max_lateral_acceleration, self.max_forward_velocity, self.max_forward_acceleration, self.max_lateral_acceleration, self.max_lateral_acceleration], dtype=np.float32
+            [self.max_lateral_acceleration_roll, self.max_forward_velocity, self.max_forward_acceleration, self.max_lateral_acceleration_target, self.max_lateral_acceleration], dtype=np.float32
         )
         self.observation_space = spaces.Box(low=self.low_state, high=self.high_state, dtype=np.float32)
 
@@ -59,7 +66,6 @@ class TinyEnv(gym.Env):
         self.isopen = True       
 
     def step(self, action: np.ndarray):
-        _, target_lataccel = self.simulator.get_state_target(self.simulator.step_idx)
         last_lataccel = self.simulator.current_lataccel
 
         if self.on_pid:
@@ -78,10 +84,18 @@ class TinyEnv(gym.Env):
         # )
         truncated = self.simulator.done()
 
-        cost = math.pow(target_lataccel-self.simulator.current_lataccel, 2) * 100 * 5 + math.pow((last_lataccel - self.simulator.current_lataccel)/DEL_T, 2)*100
+        target_lat_accel = self.simulator.target_lataccel_history[-1]
+        current_lat_accel = self.simulator.current_lataccel_history[-1]
+        last_lat_accel = self.simulator.current_lataccel_history[-2]
+       
+        lat_accel_cost = (target_lat_accel - current_lat_accel)**2
+        jerk_cost = ((current_lat_accel - last_lat_accel)/ DEL_T)**2 
+        total_cost = (lat_accel_cost * LAT_ACCEL_COST_MULTIPLIER) + jerk_cost        
+        # cost = math.pow((last_lataccel - self.simulator.current_lataccel)/DEL_T, 2)*100
+        # cost = math.pow(target_lataccel-self.simulator.current_lataccel, 2) * 100 * 5
         # # Ideally we dont want this exponential reward with capped punishment, but the agent seems to converge more easily with it.
         # reward = 1/(cost+0.001)
-        reward = -cost
+        reward = -total_cost
 
         if terminated:
             reward = -10000000000000000000

@@ -7,3 +7,4 @@ tqdm
 stable_baselines3
 simple_pid
 gymnasium
+swarming
